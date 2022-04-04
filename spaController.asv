@@ -3,7 +3,10 @@ classdef spaController < handle
     %   Detailed explanation goes here
     
     properties
+        current_folder
+        current_files = 
         folder = struct();
+        files = struct();
     end
     
     methods
@@ -14,8 +17,11 @@ classdef spaController < handle
 
         function [selectedFolder, obj] = openFolder(obj)
             %SELECTFOLDER
-             selected= uigetdir;
-             obj.folder.currentdata
+             selectedFolder = uigetdir;
+             obj.folder.currentdata = selectedFolder;
+             
+             obj.files.currentfiles 
+             
         end
     end
     
