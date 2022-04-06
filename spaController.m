@@ -7,6 +7,8 @@ classdef spaController < handle
         current_files;   % all SET files in current directory
         current_scriptFolder;
         current_details;
+        current_output_folder;
+        current_output_files;
         
         current_detailTable;
         
@@ -18,13 +20,21 @@ classdef spaController < handle
         panel_config = table();
         panel_detail = table();
         
+        pipemap;
+        
         % running pipeline
         selected_file;
         selected_EEG;
+        EEG1;
+        EEG2;
+        last_EEG;
+        next_EEG;
         EEG_array;
         
         % pipeline pane
         pipeOrderArr;
+        pipeStack;   % stack of pipeline functions
+        last_summary_table;  % last summary table of assesspipeline
 
     end
     
@@ -32,7 +42,6 @@ classdef spaController < handle
         function obj = spaController()
             %SPACONTROLLER Construct an instance of this class
             %   Controller class for Signal Preprocess Analyzer
-            
             % check if eeglab is running
             if ~exist('eeg_checkset.m','file') == 2
                 try
@@ -41,9 +50,6 @@ classdef spaController < handle
                     error("Please add eeglab to MATLAB path.")
                 end
             end 
-
-            [ obj.current_scriptFolder,~,~] = fileparts( matlab.desktop.editor.getActiveFilename );
-            
             obj.saved_filename = fullfile(obj.current_scriptFolder, 'spaController_savedSettings.mat');
             obj.panel_config_filename = fullfile(obj.current_scriptFolder, 'spaControllerPanelConfig.csv');
             obj.panel_detail_filename = fullfile(obj.current_scriptFolder, 'spaControllerPanelDetail.csv');
@@ -51,21 +57,34 @@ classdef spaController < handle
             % load "database"
             obj.readConfigCsv('PanelConfig');
             obj.readConfigCsv('PanelDetail');
-
+            
+            obj.pipemap = struct();
         end
-        function obj = selectFolder(obj)
+        function obj = setScriptFolder(obj, pathname)
+            obj.current_scriptFolder = pathname;
+        end
+        function obj = selectFolder(obj, foldertype)
             %SELECTFOLDER - user selects folder
             selectedFolder = uigetdir;
-            obj.current_folder = selectedFolder;
+            switch foldertype
+                case 'inputfolder'
+                    obj.current_folder = selectedFolder;
+                case 'outputfolder'
+                    obj.current_output_folder = selectedFolder;
+            end
         end
-        function [selectedFolder, obj] = openFolder(obj) 
+        function [selectedFolder, obj] = openFolder(obj, selectedFolder, foldertype) 
             % OPENFOLDER - List files for pane
-            selectedFolder = obj.current_folder;
             a=dir(fullfile(selectedFolder,'*.set'));                         % Obtains the contents of the selected path.
             b={a(:).name}';                      % Gets the name of the files/folders of the contents and stores them appropriately in a cell array
             b(ismember(b,{'.','..'})) = [];      % Removes unnecessary '.' and '..' results from the display.
 
-            obj.current_files = b;
+            switch foldertype
+                case 'inputfolder'
+                    obj.current_files = b;
+                case 'outputfolder'
+                    obj.current_output_files = b;
+            end
         end
         function obj = showSetStructure( obj, filename )
             
@@ -102,12 +121,73 @@ classdef spaController < handle
             obj.current_detailTable = detailTbl(fxnIdx,:);
         end
     end
-    
     methods % running pipeline
-        function obj = loadEEG( obj )
+        function obj = loadEEG( obj )  
+            obj.selected_EEG = pop_loadset( obj.selected_file, obj.current_folder );           
+        end
+        function evalstr = getPipeEvalCmd(obj, fx)
+            evalmap_key = [char(fx) '_eval'];
+            current_map = obj.pipemap.(evalmap_key);
+            tmpstr = current_map.values;
+            evalstr = tmpstr{1};  
+        end
+        function obj = applyPipeFx(obj, fx)
+            % check if previous values exist
+            savedMaps = categorical(fieldnames(obj.pipemap));
+            current_map = obj.pipemap.(char(fx));
+            keys = current_map.keys;
+            values = current_map.values;
+            
+            % function database
+            detailTbl =obj.current_detailTable;
+            
+            % function database: all inputs for single function
+            fxTble = detailTbl(categorical(detailTbl.FUNCTION) == fx,:);
+                   
+            % eval command
+            fxcmd = sprintf('%s', fx);
+            % input terms
+            fmtstr = {};
+            
+            % Build eval string piece by piece
+            for i = 1 : numel(keys)
+                % user selected parameters
+                current_key = keys(i);
+                current_value = values(i);
+                
+                if ~isempty(char(current_value))
+                    
+                    % get key instructions
+                    key_db = fxTble(categorical(fxTble.INPUT) == current_key,:);
+                    
+                    switch categorical(upper(key_db.INPUTORDER))
+                        case 'REQUIRED'  % value only
+                            fmtstr{i} = sprintf("%s", current_value{1});
+                        case 'OPTIONAL'  % key-value pair
+                            switch categorical(upper(key_db.INPUTTYPE))
+                                case 'NUMERIC'
+                                    fmtstr{i} = sprintf("'%s', %s", current_key{1}, current_value{1});
+                                case 'CHAR'
+                                    fmtstr{i} = sprintf("'%s', '%s'", current_key{1}, current_value{1});
+                            end
+                        otherwise % assume key-value pair
+                    end
+                end
+            end
+            
            
-            obj.selected_EEG = pop_loadset( obj.selected_file, obj.current_folder );
-             
+            evalcmd = [fxcmd '(EEG'];
+            for i = 1 : numel(fmtstr)
+                evalcmd = sprintf('%s, %s',evalcmd, fmtstr{i});
+            end
+            evalcmd = [evalcmd ');'];
+            
+            evalMap = containers.Map({'command'}, {evalcmd});
+            
+            % save map with eval
+            evalmap_key = [char(fx) '_eval'];
+            obj.storeMap( evalmap_key, evalMap );
+            
         end
     end
     
@@ -124,8 +204,12 @@ classdef spaController < handle
             obj.saved_settings.current_folder = ...
                 obj.current_folder;
             
+            obj.saved_settings.current_output_folder = ...
+                obj.current_output_folder;
+            
             saved_settings_local = obj.saved_settings;
-            save(filename, 'saved_settings_local');
+            pipemap = obj.pipemap;
+            save(filename, 'saved_settings_local', 'pipemap');
             
         end   
         function obj = loadSettings( obj )
@@ -134,7 +218,16 @@ classdef spaController < handle
             
             obj.current_folder = ...
                 saved_settings_local.current_folder;
+            obj.current_output_folder = ...
+                saved_settings_local.current_output_folder;
+            
         end
+        function obj = loadMap( obj )
+            filename = 'spaController_savedSettings.mat';
+            load(filename, 'pipemap');
+            
+            obj.pipemap = pipemap;
+        end        
         
         % CSV Functions
         function obj = updateConfigCsv( obj, key )
@@ -155,7 +248,6 @@ classdef spaController < handle
         function obj = storeNewPipeOrder( obj, arr)            
             obj.pipeOrderArr = arr;
         end
-        
         function obj = readConfigCsv( obj, key)
             switch key
                 case 'PanelConfig'
@@ -163,8 +255,7 @@ classdef spaController < handle
                 case 'PanelDetail'
                     obj.panel_detail = readtable(obj.panel_detail_filename);
             end
-        end
-    
+        end 
         function obj = saveConfigCsv( obj, key )
            
             switch key
@@ -178,8 +269,20 @@ classdef spaController < handle
                         writetable(obj.panel_detail, obj.panel_detail_filename);
                     end
             end
-        end
+        end 
         
+        % Map functions
+        function obj = storeMap(obj, label, map)
+            obj.pipemap.(label) = map;
+        end
     end
     
+    methods (Static)
+        function EEG = loadSet( filename, filepath)
+            EEG = pop_loadset( filename, filepath);
+        end
+        function EEG = saveSet( EEG, filename, filepath)
+            EEG = pop_saveset( EEG, filename, filepath);
+        end
+    end
 end

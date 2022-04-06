@@ -20,6 +20,20 @@
 %  - ERP_PostICA - Standard ICA cleaning method
 
 load(websave('WT1_ContData.mat', 'https://zenodo.org/record/6409036/files/WT1_ContData.mat?download=1'))
+load(websave('WT1_ContData.mat', 'https://zenodo.org/record/6409036/files/WT2_ErpData.mat?download=1'));
+
+ERP_PreICA = pop_loadset('D0051_hab_preica.set','C:\Users\ernie\Downloads');
+ERP_PreICA.etc = [];
+ERP_PreICA.group = [];
+ERP_PreICA.subject = 'D0051';
+ERP_PreICA.condition = [];
+ERP_PreICA.history = [];
+ERP_PreICA.comments = [];
+
+ERP_PostICA.comments = [];
+
+save('WT2_ErpData.mat', 'ERP_PostICA', 'ERP_PreICA');  
+
 
 % add toolkit paths
 vhtp_path = 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_SAT\EEG Paper\vhtp';
