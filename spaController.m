@@ -25,6 +25,11 @@ classdef spaController < handle
         % running pipeline
         selected_file;
         selected_EEG;
+        
+        multiFileMode;
+        multiInputFiles;
+        multiOutputFiles;
+        
         EEG1;
         EEG2;
         last_EEG;
@@ -131,6 +136,67 @@ classdef spaController < handle
             tmpstr = current_map.values;
             evalstr = tmpstr{1};  
         end
+        function str = generatePipeCmd(obj, fx)
+            % check if previous values exist
+            savedMaps = categorical(fieldnames(obj.pipemap));
+            current_map = obj.pipemap.(char(fx));
+            keys = current_map.keys;
+            values = current_map.values;
+            
+            % function database
+            obj.getDetailTableByFunName(fx);
+            detailTbl = obj.current_detailTable;
+            
+            % function database: all inputs for single function
+            fxTble = detailTbl(categorical(detailTbl.FUNCTION) == fx,:);
+                   
+            % eval command
+            fxcmd = sprintf('%s', fx);
+            % input terms
+            fmtstr = {};
+            
+            % Build eval string piece by piece
+            for i = 1 : numel(keys)
+                % user selected parameters
+                current_key = keys(i);
+                current_value = values(i);
+                
+                if ~isempty(char(current_value))
+                    
+                    % get key instructions
+                    key_db = fxTble(categorical(fxTble.INPUT) == current_key,:);
+                    
+                    switch categorical(upper(key_db.INPUTORDER))
+                        case 'REQUIRED'  % value only
+                            fmtstr{i} = sprintf("%s", current_value{1});
+                        case 'OPTIONAL'  % key-value pair
+                            switch categorical(upper(key_db.INPUTTYPE))
+                                case 'NUMERIC'
+                                    fmtstr{i} = sprintf("'%s', %s", current_key{1}, current_value{1});
+                                case 'CHAR'
+                                    fmtstr{i} = sprintf("'%s', '%s'", current_key{1}, current_value{1});
+                            end
+                        otherwise % assume key-value pair
+                    end
+                end
+            end
+            
+           
+            evalcmd = [fxcmd '(EEG'];
+            for i = 1 : numel(fmtstr)
+                evalcmd = sprintf('%s, %s',evalcmd, fmtstr{i});
+            end
+            evalcmd = [evalcmd ');'];
+            
+            evalMap = containers.Map({'command'}, {evalcmd});
+            
+            % save map with eval
+            evalmap_key = [char(fx) '_eval'];
+            obj.storeMap( evalmap_key, evalMap );
+          
+            str = evalcmd;
+            
+        end
         function obj = applyPipeFx(obj, fx)
             % check if previous values exist
             savedMaps = categorical(fieldnames(obj.pipemap));
@@ -139,7 +205,8 @@ classdef spaController < handle
             values = current_map.values;
             
             % function database
-            detailTbl =obj.current_detailTable;
+            obj.getDetailTableByFunName(fx);
+            detailTbl = obj.current_detailTable;
             
             % function database: all inputs for single function
             fxTble = detailTbl(categorical(detailTbl.FUNCTION) == fx,:);

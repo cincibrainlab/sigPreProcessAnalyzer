@@ -25,6 +25,11 @@ classdef spaController < handle
         % running pipeline
         selected_file;
         selected_EEG;
+        
+        multiFileMode;
+        multiInputFiles;
+        multiOutputFiles;
+        
         EEG1;
         EEG2;
         last_EEG;
@@ -33,7 +38,8 @@ classdef spaController < handle
         
         % pipeline pane
         pipeOrderArr;
-        pipeStack;
+        pipeStack;   % stack of pipeline functions
+        last_summary_table;  % last summary table of assesspipeline
 
     end
     
@@ -130,6 +136,7 @@ classdef spaController < handle
             tmpstr = current_map.values;
             evalstr = tmpstr{1};  
         end
+        function str = create
         function obj = applyPipeFx(obj, fx)
             % check if previous values exist
             savedMaps = categorical(fieldnames(obj.pipemap));
