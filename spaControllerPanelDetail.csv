@@ -1,0 +1,4 @@
+FUNCTION,INPUT,INPUTTYPE,INPUTORDER,DESCRIPTION,SOURCE
+eeg_htpEegResampleDataEeglab,srate,numeric,required,New Sample Rate,vhtp
+eeg_htpEegWaveletDenoiseHappe,wavLvl,numeric,optional,level of wavelet decomposition,vhtp
+eeg_htpEegWaveletDenoiseHappe,ThresholdRule,char,optional,rule to shrink wavelet coefficients,vhtp

@@ -1,0 +1,14 @@
+ORDER,PANEL,SUBPANEL,ACTION,LABEL,FUNCTION
+1,PREPROCESS,PIPELINE,TRIM,Trim Data,pop_eegselect
+2,PREPROCESS,PIPELINE,RESAMPLE,Resample,eeg_htpEegResampleDataEeglab
+3,PREPROCESS,PIPELINE,HIGHPASS,High Pass Filter,eeg_htpEegFilterEeglab
+4,PREPROCESS,PIPELINE,LOWPASS,Low Pass Filter,eeg_htpEegFilterEeglab
+5,PREPROCESS,PIPELINE,CHANCLEAN,Channel Rejection,eeg_htpEegRemoveChansEeglab
+6,PREPROCESS,PIPELINE,CONTCLEAN,Continous Rejection,eeg_htpEegRemoveSegmentsEeglab
+7,PREPROCESS,PIPELINE,REREF,Average Reference,eeg_htpEegRereferenceEeglab
+8,PREPROCESS,PIPELINE,CONTCLEAN,Continous Rejection,eeg_htpEegRemoveSegmentsEeglab
+9,PREPROCESS,PIPELINE,INTERPOLATE,Interpolate Channels,eeg_htpEegInterpolateChansEeglab
+10,PREPROCESS,PIPELINE,WVLTHRESH,Wavelet Thresholding,eeg_htpEegWaveletDenoiseHappe
+11,PREPROCESS,PIPELINE,RUNICA,Perform ICA,eeg_htpEegIcaEeglab
+12,PREPROCESS,PIPELINE,COMPREMOVE,Remove Components,eeg_htpEegRemoveCompsEeglab
+13,PREPROCESS,PIPELINE,WVLTHRESH,Wavelet Thresholding,eeg_htpCalcSource
