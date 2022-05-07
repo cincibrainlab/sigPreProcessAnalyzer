@@ -5,7 +5,9 @@
 % Code run on MATLAB 2021a and EEGLAB 2022.0
 
 % For conveniance dataset is cloudhosted
-
+raw.srcchirp.atlas <- 
+  read_csv("https://www.dropbox.com/s/wkbezwt1qitzueo/DK_atlas-68_dict.csv?dl=1") %>% 
+  select(labelclean, brainpaint, region, RSN, side, lobe)
 % WT1_ContinousData.mat
 % Resting State Data
 % contains 2 EEGLAB SET variables
@@ -77,7 +79,7 @@ eegplot(EEG.data, 'data2', EEG2.data)
 
 % add toolkit paths
 vhtp_path = 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\external\vhtp';
-eeglab_path = 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_SAT\EEG Paper\eeglab';
+eeglab_path = 'C:\Users\ernie\Dropbox\code\eeglab';
 brainstorm_path = 'E:\Research Software\brainstorm3';
 restoredefaultpath;
 addpath(genpath(vhtp_path));
@@ -93,7 +95,7 @@ erp_filepath = 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset';
 
 % get epochs
 EEG = pop_loadset('filename', erp_file.import, 'filepath', erp_filepath);
-
+EEG_PreIca = pop_loadset('filename', erp_file.postica, 'filepath', erp_filepath);
 
 %% Run 1: Original Three Methods
 comment_tags = table({'S1_Filter_Channel'; 'S2_Manual Cleaning'; 'S4_Post_ICA'}, 'VariableNames', {'Description'});
@@ -133,6 +135,8 @@ eeg_htpVisualizeHabErp(EEGHab, 'groupmean', false, 'singleplot', true, ...
     'outputdir', 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset\Output',...
     'drugNames', {'S4_Post-ICA','S2_Manual Cleaning', 'S1_Filter_Only'}, ...
     'plotstyle','tetra')
+%%
+EEG = eeg_htpEegValidateErpPipeline( EEG_PreIca );
 
 
 %% Wavlet Thresholding
@@ -242,7 +246,7 @@ EEG_wtdefault.etc.vhtp.eeg_htpVisualizeHabErp.tag = 'WT_Default';
 EEG_wt_hab_8 = eeg_htpEegWaveletDenoiseHappe( EEGHab{2}, 'isErp', true, 'filtOn', ...
     false,'wavLvl',8);
 EEG_wt_hab_8.etc.vhtp.eeg_htpVisualizeHabErp.tag = 'WT_wavlvl8';
-EEG_wt_hab_8 = eeg_htpCalcHabErp(EEG_wtdefault);
+EEG_wt_hab_8 = eeg_htpCalcHabErp(EEG_wt_hab_8);
 EEG_wt_hab_8.setname = 'WT WaveLvl 8';
 EEG_wt_hab_8.filename = 'D0051_S3_WT_WaveL8.set';
 pop_saveset(EEG_wt_hab_8, 'filename', EEG_wt_hab_8.filename, ...
@@ -252,7 +256,7 @@ pop_saveset(EEG_wt_hab_8, 'filename', EEG_wt_hab_8.filename, ...
 EEG_wt_hab_10 = eeg_htpEegWaveletDenoiseHappe( EEGHab{2}, 'isErp', true, 'filtOn', ...
     false,'wavLvl',10);
 EEG_wt_hab_10.etc.vhtp.eeg_htpVisualizeHabErp.tag = 'WT_wavlvl10';
-EEG_wt_hab_10 = eeg_htpCalcHabErp(EEG_wtdefault);
+EEG_wt_hab_10 = eeg_htpCalcHabErp(EEG_wt_hab_10);
 EEG_wt_hab_10.setname = 'WT WaveLvl 10';
 EEG_wt_hab_10.filename = 'D0051_S3_WT_WaveL10.set';
 pop_saveset(EEG_wt_hab_10, 'filename', EEG_wt_hab_10.filename, ...
@@ -263,7 +267,7 @@ pop_saveset(EEG_wt_hab_10, 'filename', EEG_wt_hab_10.filename, ...
 EEG_wt_hab_12 = eeg_htpEegWaveletDenoiseHappe( EEGHab{2}, 'isErp', true, 'filtOn', ...
     false,'wavLvl',12);
 EEG_wt_hab_12.etc.vhtp.eeg_htpVisualizeHabErp.tag = 'WT_wavlvl12';
-EEG_wt_hab_12 = eeg_htpCalcHabErp(EEG_wtdefault);
+EEG_wt_hab_12 = eeg_htpCalcHabErp(EEG_wt_hab_12);
 EEG_wt_hab_12.setname = 'WT WaveLvl 12';
 EEG_wt_hab_12.filename = 'D0051_S3_WT_WaveL12.set';
 pop_saveset(EEG_wt_hab_12, 'filename', EEG_wt_hab_12.filename, ...
@@ -291,4 +295,59 @@ EEGWTDefault = {EEG_wt_hab_8, EEG_wt_hab_10, EEG_wt_hab_12};
 eeg_htpVisualizeHabErp(EEGWTDefault, 'groupmean', false, 'singleplot', true, ...
     'outputdir', 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset\Output',...
     'drugNames', {'S3_8', 'S3_10', 'S2_12'}, ...
+    'plotstyle','tetra')
+
+%% CLEANRAWDATA
+% EEGHab = {};
+
+% load seed EEG
+EEG_preica    = EEGHab{2};
+EEG_postcomps = EEGHab{3};
+
+% Makoto Suggestions:
+% SD 20 (Default 5)
+
+
+EEGCRD_Riemann = clean_artifacts(ERP_PreICA, 'UseRiemannian', true);
+EEGCRD = clean_artifacts(ERP_PreICA, 'UseRiemannian', true);
+EEGCRD.etc.vhtp.eeg_htpVisualizeHabErp.tag = 'ASR_Default';
+EEGCRD_DIN8_InterpolateNeeded = eeg_htpEegCreateEpochsHabEeglab(EEGCRD);
+EEGCRD_DIN8 = pop_interp(EEGCRD_DIN8_InterpolateNeeded, ...
+EEG.chanlocs);
+EEGCRD_Hab = eeg_htpCalcHabErp(EEGCRD_DIN8);
+EEGCRD_Hab.setname = 'EEG_ASR_Default';
+EEGCRD_Hab.filename = 'D0051_CRD_Default.set';
+pop_saveset(EEGCRD_Hab, 'filename', EEGCRD_Hab.filename, ...
+    'filepath', 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset\Output\WG_Datasets\' )
+EEGCRD.etc
+
+
+EEGASR = clean_asr(ERP_PreICA);
+EEGASR.etc.vhtp.eeg_htpVisualizeHabErp.tag = 'ASR_Default';
+EEGASR_DIN8 = eeg_htpEegCreateEpochsHabEeglab(EEGASR);
+EEGASR_Hab = eeg_htpCalcHabErp(EEGASR_DIN8);
+EEGASR_Hab.setname = 'EEG_ASR_Default';
+EEGASR_Hab.filename = 'D0051_ASR_Default.set';
+pop_saveset(EEGASR_Hab, 'filename', EEGASR_Hab.filename, ...
+    'filepath', 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset\Output\WG_Datasets\' )
+
+EEGWTDefault = {EEG_preica, EEGCRD_Hab, EEG_postcomps};
+
+% Visualize original three methods on same plot
+% with latencies
+eeg_htpVisualizeHabErp(EEGWTDefault, 'groupmean', false, 'singleplot', false, ...
+    'outputdir', 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset\Output')
+% all on single plot
+eeg_htpVisualizeHabErp(EEGWTDefault, 'groupmean', false, 'singleplot', true, ...
+    'outputdir', 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset\Output')
+
+% Zooom
+% Code to zero out a certain ERP for visualization
+% blank_data = zeros(size(EEGWTDefault{i}.etc.htp.hab.erp));
+% EEGWTDefault{1}.etc.htp.hab.erp = blank_data;
+% EEGWTDefault{2}.etc.htp.hab.erp = blank_data;
+% EEGWTDefault{3}.etc.htp.hab.erp = blank_data;
+eeg_htpVisualizeHabErp(EEGWTDefault, 'groupmean', false, 'singleplot', true, ...
+    'outputdir', 'C:\Users\ernie\Dropbox\RESEARCH_FOCUS\MAIN_WT\Dataset\Output',...
+    'drugNames', {'S4_PostComp', 'S3_CRD', 'S2_PreICA'}, ...
     'plotstyle','tetra')
